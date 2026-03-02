@@ -5,7 +5,7 @@ AGENTS.md
 tasks/
 
 # Binaries
-agent-secret
+/agent-secret
 *.exe
 *.exe~
 *.dll
