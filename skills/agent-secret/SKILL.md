@@ -5,6 +5,7 @@ description: |
   - Set up environment variables or secrets for a project
   - Inject API keys, database passwords, or other credentials into .env files
   - Check if secrets are configured without exposing their values
+  - List keys in .env files (without showing values)
   - List available secrets stored in the keychain
   - Configure secrets for automated workflows
 
@@ -17,6 +18,7 @@ description: |
   - Asks about storing or managing secrets securely
   - References any service that typically requires API keys (maps, payments, auth, databases)
   - Says phrases like "add [service] to .env" or "set up [service] api key"
+  - Wants to see what keys exist in a .env file
 ---
 
 # Agent Secret - Secure Secret Management
@@ -62,6 +64,73 @@ agent-secret inject MYAPP_DB_PASSWORD:DATABASE_URL
 agent-secret inject PROJECTX_AWS_KEY:AWS_ACCESS_KEY_ID -f .env.local
 ```
 
+### Intelligent Secret Matching
+
+**CRITICAL: Be smart about matching user requests to stored secrets.**
+
+#### Understanding Project Prefixes
+
+Secret names often follow the pattern: `PROJECTNAME_SERVICENAME_KEYTYPE`
+
+Examples:
+- `TRAVELER_GOOGLE_MAPS_API_KEY` → Project: TRAVELER, Service: GOOGLE_MAPS, Type: API_KEY
+- `MYAPP_STRIPE_SECRET_KEY` → Project: MYAPP, Service: STRIPE, Type: SECRET_KEY
+- `PROJECTX_DATABASE_URL` → Project: PROJECTX, Service: DATABASE, Type: URL
+
+Common prefixes: `TRAVELER_`, `MYAPP_`, `PROJECTX_`, `APP_`, project-specific names followed by underscore.
+
+#### Service Name Matching
+
+When a user mentions a service, match it to secrets containing that service name (case-insensitive, ignore spaces/underscores):
+
+| User says | Should match secrets containing |
+|-----------|--------------------------------|
+| "googlemaps", "google maps" | `GOOGLE_MAPS` |
+| "stripe" | `STRIPE` |
+| "supabase" | `SUPABASE` |
+| "firebase" | `FIREBASE` |
+| "database", "db" | `DATABASE`, `DB` |
+| "aws" | `AWS` |
+| "openai" | `OPENAI` |
+
+#### Checking .env Files - Use FILE KEY, Not Secret Name
+
+When checking if a key exists in .env, use the **FILE KEY NAME** (without project prefix), NOT the full secret name:
+
+```bash
+# WRONG - checking with full secret name
+agent-secret check TRAVELER_GOOGLE_MAPS_API_KEY -f .env
+
+# CORRECT - checking with file key name (without prefix)
+agent-secret check GOOGLE_MAPS_API_KEY -f .env
+```
+
+#### Smart Discovery Workflow
+
+When user asks to "add googlemaps" or "set up stripe":
+
+1. **List secrets** to see what's available:
+   ```bash
+   agent-secret list
+   ```
+
+2. **Match the service** to stored secrets:
+   - User says "googlemaps" → Look for secrets containing `GOOGLE_MAPS`
+   - Found: `TRAVELER_GOOGLE_MAPS_API_KEY`
+
+3. **Extract the file key name** (remove project prefix):
+   - `TRAVELER_GOOGLE_MAPS_API_KEY` → File key: `GOOGLE_MAPS_API_KEY`
+
+4. **Inject with mapping**:
+   ```bash
+   agent-secret inject TRAVELER_GOOGLE_MAPS_API_KEY:GOOGLE_MAPS_API_KEY -f .env
+   ```
+
+5. **Verify with file key name**:
+   ```bash
+   agent-secret check GOOGLE_MAPS_API_KEY -f .env
+   ```
+
 ## Agent Decision Flow
 
 When you need to work with secrets, follow this decision tree:
@@ -75,6 +144,9 @@ When you need to work with secrets, follow this decision tree:
 │                                                                 │
 │ YES → Do you need to verify it exists?                          │
 │     → Run `agent-secret check <SECRET_NAME> -q`                 │
+│                                                                 │
+│     → Do you need to list all keys in a file?                   │
+│     → Run `agent-secret check --list -f <file>`                 │
 │                                                                 │
 │     → Do you need to create/update a key-value file?            │
 │     → Run `agent-secret inject <SECRET_NAME>:<KEY_NAME>`        │
@@ -132,6 +204,30 @@ Useful for scripts and verification:
 ```bash
 agent-secret check DATABASE_URL -q && echo "Configured" || echo "Missing"
 ```
+
+### List Keys in .env File
+
+```bash
+agent-secret check --list [-f <file>]
+agent-secret check -l [-f <file>]
+```
+
+Lists all keys in the target .env file without showing their values. Keys are sorted alphabetically.
+
+Examples:
+```bash
+# List all keys in default ./.env
+agent-secret check --list
+
+# List keys from a specific file
+agent-secret check --list -f ./config/.env
+agent-secret check -l -f .env.local
+```
+
+This is useful for:
+- Discovering what configuration a project needs
+- Verifying which keys are already set up
+- Comparing keys between different environments
 
 ### Inject Secrets into Key-Value Files
 
@@ -312,14 +408,34 @@ agent-secret inject PROJECTZ_AWS_KEY:AWS_ACCESS_KEY_ID -f ./projectz/.env.local
 When working autonomously with secrets:
 
 1. **Always use `list` before asking user** - Discover available secrets first
-2. **Use `check -q` to verify prerequisites** - Silent verification for scripts
-3. **Use `inject` to set up .env files** - Never manually write credential files
-4. **Never attempt to read or log secret values** - Report status only
-5. **Map secrets to standard key names** - Keep config files consistent across projects
-6. **Report configuration status, not values** - Say "configured" or "missing", never show values
-7. **Only use files with '.env' in the name** - .env, .env.local, .env.production, etc.
+2. **Match services intelligently** - When user says "googlemaps", look for secrets containing `GOOGLE_MAPS`
+3. **Understand project prefixes** - `TRAVELER_GOOGLE_MAPS_API_KEY` has prefix `TRAVELER_`, service `GOOGLE_MAPS`
+4. **Check .env with FILE KEY names** - Use `GOOGLE_MAPS_API_KEY`, not `TRAVELER_GOOGLE_MAPS_API_KEY`
+5. **Inject with mapping** - Always map `SECRET_NAME:FILE_KEY` to remove project prefix
+6. **Use `check -q` to verify prerequisites** - Silent verification for scripts
+7. **Never manually write credential files** - Always use `inject`
+8. **Never attempt to read or log secret values** - Report status only
+9. **Report configuration status, not values** - Say "configured" or "missing", never show values
+10. **Only use files with '.env' in the name** - .env, .env.local, .env.production, etc.
 
 ## Common Scenarios
+
+### Scenario: User says "add googlemaps" or "add google maps api key"
+
+```bash
+# 1. List secrets to find matching service
+agent-secret list
+# Output shows: TRAVELER_GOOGLE_MAPS_API_KEY
+
+# 2. Extract file key name (remove project prefix TRAVELER_)
+# File key = GOOGLE_MAPS_API_KEY
+
+# 3. Inject with mapping
+agent-secret inject TRAVELER_GOOGLE_MAPS_API_KEY:GOOGLE_MAPS_API_KEY -f .env
+
+# 4. Verify using FILE KEY name (not the secret name)
+agent-secret check GOOGLE_MAPS_API_KEY -f .env
+```
 
 ### Scenario: Setting up configuration for a service
 
@@ -328,28 +444,28 @@ When working autonomously with secrets:
 
 # 1. Discover what secrets exist
 agent-secret list
+# Output shows: MYPROJECT_SUPABASE_KEY, MYPROJECT_SUPABASE_URL
 
-# 2. Look for matching pattern (e.g., MYPROJECT_SUPABASE_KEY)
-# 3. Verify and inject to appropriate file
-agent-secret check MYPROJECT_SUPABASE_KEY -q && \
-  agent-secret inject MYPROJECT_SUPABASE_KEY:SUPABASE_KEY MYPROJECT_SUPABASE_URL:SUPABASE_URL -f .env.local
+# 2. Extract file key names (remove MYPROJECT_ prefix)
+# File keys = SUPABASE_KEY, SUPABASE_URL
+
+# 3. Inject with mapping
+agent-secret inject MYPROJECT_SUPABASE_KEY:SUPABASE_KEY MYPROJECT_SUPABASE_URL:SUPABASE_URL -f .env.local
+
+# 4. Verify using FILE KEY names
+agent-secret check SUPABASE_KEY -f .env.local && \
+agent-secret check SUPABASE_URL -f .env.local && \
+echo "Supabase configured" || echo "Missing Supabase config"
 ```
 
 ### Scenario: Checking if project is configured
 
 ```bash
-# Check multiple secrets at once
+# Check using FILE KEY names (without project prefix)
 agent-secret check DATABASE_URL -q && \
 agent-secret check API_KEY -q && \
 agent-secret check JWT_SECRET -q && \
 echo "All secrets configured" || echo "Some secrets missing"
-```
-
-### Scenario: Setting up direnv
-
-```bash
-# For projects using direnv (use .env file that direnv sources)
-agent-secret inject PROJECTX_AWS_KEY:AWS_ACCESS_KEY_ID PROJECTX_AWS_SECRET:AWS_SECRET_ACCESS_KEY -f .env
 ```
 
 ### Scenario: Missing secret handling
@@ -359,3 +475,33 @@ If `check` or `inject` fails due to missing secret:
 1. Inform user: "Secret `PROJECTX_API_KEY` is not stored"
 2. Provide command: "Run `agent-secret set PROJECTX_API_KEY` to store it"
 3. Wait for user to complete storage before continuing
+
+### Scenario: Discovering what keys a project needs
+
+When you need to understand what configuration a project requires:
+
+```bash
+# List all keys in the .env file
+agent-secret check --list -f .env
+# Output:
+# API_KEY
+# DATABASE_URL
+# JWT_SECRET
+# REDIS_URL
+
+# Then verify each is configured
+agent-secret check API_KEY -q && echo "✓ API_KEY" || echo "✗ API_KEY"
+agent-secret check DATABASE_URL -q && echo "✓ DATABASE_URL" || echo "✗ DATABASE_URL"
+```
+
+### Scenario: Comparing environments
+
+When checking differences between development and production:
+
+```bash
+# List keys in each environment
+agent-secret check --list -f .env.development
+agent-secret check --list -f .env.production
+
+# Compare outputs to ensure parity
+```

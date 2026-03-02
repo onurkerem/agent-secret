@@ -59,6 +59,24 @@ agent-secret check DATABASE_URL
 agent-secret check API_KEY -q && echo "Configured" || echo "Missing"
 ```
 
+### List keys in .env file
+
+List all keys (not values) in a .env file:
+
+```bash
+# List all keys in default ./.env
+agent-secret check --list
+# API_KEY
+# DATABASE_URL
+# REDIS_URL
+
+# List keys from a specific file
+agent-secret check --list -f ./config/.env
+
+# Short form
+agent-secret check -l
+```
+
 ### Inject secrets into .env file
 
 The `inject` command only works with files that have `.env` in their name (e.g., `.env`, `.env.local`, `.env.production`).

@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/onurkerem/agent-secret/internal/parser"
 	"github.com/spf13/cobra"
@@ -11,6 +12,7 @@ import (
 var (
 	checkEnvFile string
 	checkQuiet   bool
+	checkList    bool
 )
 
 var checkCmd = &cobra.Command{
@@ -22,18 +24,18 @@ This command is designed for use by automated agents that need to verify
 secrets are properly configured without being able to see the actual values.
 
 Exit codes:
-  0 - Key exists and has a non-empty value
+  0 - Key exists and has a non-empty value (or list mode succeeded)
   1 - Key is missing or has an empty value
   2 - Error occurred (file not found, etc.)
 
 Examples:
   agent-secret check DATABASE_URL
   agent-secret check API_KEY -f ./config/.env
-  agent-secret check SECRET_TOKEN --quiet`,
-	Args: cobra.ExactArgs(1),
+  agent-secret check SECRET_TOKEN --quiet
+  agent-secret check --list
+  agent-secret check --list -f ./config/.env`,
+	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		keyName := args[0]
-
 		// Parse the env file
 		values, err := parser.ParseEnvFile(checkEnvFile)
 		if err != nil {
@@ -42,6 +44,36 @@ Examples:
 			}
 			os.Exit(2)
 		}
+
+		// List mode: print all keys
+		if checkList {
+			if len(values) == 0 {
+				if !checkQuiet {
+					fmt.Printf("No keys found in %s\n", checkEnvFile)
+				}
+				os.Exit(0)
+			}
+
+			// Sort keys for consistent output
+			keys := make([]string, 0, len(values))
+			for key := range values {
+				keys = append(keys, key)
+			}
+			sort.Strings(keys)
+
+			for _, key := range keys {
+				fmt.Println(key)
+			}
+			os.Exit(0)
+		}
+
+		// Check mode: verify specific key
+		if len(args) == 0 {
+			fmt.Fprintln(os.Stderr, "Error: KEY_NAME is required when not using --list")
+			os.Exit(2)
+		}
+
+		keyName := args[0]
 
 		// Check if key exists and has non-empty value
 		value, exists := values[keyName]
@@ -71,4 +103,5 @@ func init() {
 	rootCmd.AddCommand(checkCmd)
 	checkCmd.Flags().StringVarP(&checkEnvFile, "file", "f", "./.env", "Target .env file path")
 	checkCmd.Flags().BoolVarP(&checkQuiet, "quiet", "q", false, "Suppress output (use exit code only)")
+	checkCmd.Flags().BoolVarP(&checkList, "list", "l", false, "List all keys in the target file")
 }
