@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/onurkerem/agent-secret/internal/keyring"
@@ -43,6 +44,14 @@ Examples:
   agent-secret inject API_KEY -f ./config/.env`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		// Validate that the file name contains '.env'
+		fileName := filepath.Base(envFile)
+		if !strings.Contains(fileName, ".env") {
+			fmt.Fprintf(os.Stderr, "Error: File name must contain '.env'. Got: %s\n", fileName)
+			fmt.Fprintf(os.Stderr, "The inject command only works with .env files (e.g., .env, .env.local, .env.production)\n")
+			os.Exit(1)
+		}
+
 		// Parse secret specs (SECRET_NAME or SECRET_NAME:KEY_NAME)
 		type secretMapping struct {
 			secretName string

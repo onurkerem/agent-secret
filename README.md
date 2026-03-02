@@ -61,6 +61,8 @@ agent-secret check API_KEY -q && echo "Configured" || echo "Missing"
 
 ### Inject secrets into .env file
 
+The `inject` command only works with files that have `.env` in their name (e.g., `.env`, `.env.local`, `.env.production`).
+
 ```bash
 # Inject single secret (secret name = key name)
 agent-secret inject API_KEY
@@ -75,8 +77,10 @@ agent-secret inject PROJECTX_DB_PASS:DB_PASSWORD
 # Mixed: some mapped, some not
 agent-secret inject PROJECTX_JWT_SECRET:JWT_SECRET API_KEY DB_PASS:DATABASE_URL
 
-# Specify custom .env file path
+# Specify custom .env file path (must contain '.env' in filename)
 agent-secret inject API_KEY -f ./config/.env
+agent-secret inject API_KEY -f .env.local
+agent-secret inject API_KEY -f .env.production
 ```
 
 ### Delete a secret

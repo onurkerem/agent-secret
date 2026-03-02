@@ -3,13 +3,20 @@ name: agent-secret
 description: |
   Secure secret management using the OS keychain. Use this skill whenever you need to:
   - Set up environment variables or secrets for a project
-  - Inject API keys, database passwords, or other credentials into key-value files
+  - Inject API keys, database passwords, or other credentials into .env files
   - Check if secrets are configured without exposing their values
   - List available secrets stored in the keychain
   - Configure secrets for automated workflows
 
-  Trigger this skill when the user mentions secrets, API keys, credentials, environment variables,
-  config files, or needs to securely configure a project with sensitive data.
+  TRIGGER AUTOMATICALLY when the user:
+  - Mentions adding, setting, updating, injecting, or configuring ANY value in .env files
+  - Says "add key", "set key", "add api", "set api" in context of config/environment files
+  - Mentions API keys for services (Google Maps, Stripe, OpenAI, Supabase, Firebase, AWS, etc.)
+  - Mentions credentials, passwords, tokens, secrets, or sensitive configuration
+  - Wants to configure environment variables or .env files
+  - Asks about storing or managing secrets securely
+  - References any service that typically requires API keys (maps, payments, auth, databases)
+  - Says phrases like "add [service] to .env" or "set up [service] api key"
 ---
 
 # Agent Secret - Secure Secret Management
@@ -18,14 +25,11 @@ This skill enables you to manage secrets securely using the `agent-secret` CLI t
 
 ## Supported File Types
 
-agent-secret works with any **key-value structured files**:
+agent-secret inject command only works with files that have `.env` in their name:
 
 - `.env` - Environment files
 - `.env.local`, `.env.development`, `.env.production` - Environment-specific configs
-- `.envrc` - direnv configuration
-- `app.properties` - Java/Scala properties files
-- `config.ini` - INI configuration files (key=value sections)
-- Any custom key-value file format
+- `my.env`, `config.env` - Custom .env files
 
 The tool preserves file structure including comments, empty lines, and formatting.
 
@@ -54,8 +58,8 @@ agent-secret inject PROJECTX_SUPABASE_KEY:SUPABASE_KEY
 # Secret stored as MYAPP_DB_PASSWORD → appears as DATABASE_URL in file
 agent-secret inject MYAPP_DB_PASSWORD:DATABASE_URL
 
-# Secret stored as PROJECTX_AWS_KEY → appears as AWS_ACCESS_KEY_ID in .envrc
-agent-secret inject PROJECTX_AWS_KEY:AWS_ACCESS_KEY_ID -f .envrc
+# Secret stored as PROJECTX_AWS_KEY → appears as AWS_ACCESS_KEY_ID in .env.local
+agent-secret inject PROJECTX_AWS_KEY:AWS_ACCESS_KEY_ID -f .env.local
 ```
 
 ## Agent Decision Flow
@@ -154,14 +158,10 @@ agent-secret inject PROJECTX_DB_PASS:DB_PASSWORD
 # Mixed mapping
 agent-secret inject PROJECTX_JWT_SECRET:JWT_SECRET API_KEY DB_PASS:DATABASE_URL
 
-# Environment-specific files
+# Environment-specific files (must contain '.env' in filename)
 agent-secret inject API_KEY DB_URL -f .env.local
 agent-secret inject API_KEY DB_URL -f .env.production
-
-# Other key-value file types
-agent-secret inject DB_HOST:HOST DB_PASS:PASSWORD -f config.ini
-agent-secret inject API_KEY SECRET_KEY -f .envrc
-agent-secret inject DB_URL API_KEY -f ./config/app.properties
+agent-secret inject API_KEY DB_URL -f ./config/.env
 ```
 
 The injection preserves:
@@ -203,11 +203,8 @@ When you need to set up credentials or configuration for a project:
    # Environment-specific
    agent-secret inject PROJECTX_API_KEY:API_KEY -f .env.production
 
-   # direnv configuration
-   agent-secret inject PROJECTX_AWS_KEY:AWS_ACCESS_KEY_ID -f .envrc
-
-   # Properties/config files
-   agent-secret inject PROJECTX_DB_PASS:database.password -f application.properties
+   # Custom .env file locations
+   agent-secret inject PROJECTX_AWS_KEY:AWS_ACCESS_KEY_ID -f ./config/.env
    ```
 
 ### Pattern 2: Agent Checking Prerequisites
@@ -292,8 +289,8 @@ agent-secret inject PROJECTX_API_KEY:API_KEY PROJECTX_DB:DATABASE_URL -f ./proje
 # Project Y - environment-specific
 agent-secret inject PROJECTY_API_KEY:API_KEY PROJECTY_DB:DATABASE_URL -f ./projecty/.env.production
 
-# Project Z - direnv
-agent-secret inject PROJECTZ_AWS_KEY:AWS_ACCESS_KEY_ID -f ./projectz/.envrc
+# Project Z - custom location
+agent-secret inject PROJECTZ_AWS_KEY:AWS_ACCESS_KEY_ID -f ./projectz/.env.local
 ```
 
 ## Security Best Practices
@@ -316,11 +313,11 @@ When working autonomously with secrets:
 
 1. **Always use `list` before asking user** - Discover available secrets first
 2. **Use `check -q` to verify prerequisites** - Silent verification for scripts
-3. **Use `inject` to set up key-value files** - Never manually write credential files
+3. **Use `inject` to set up .env files** - Never manually write credential files
 4. **Never attempt to read or log secret values** - Report status only
 5. **Map secrets to standard key names** - Keep config files consistent across projects
 6. **Report configuration status, not values** - Say "configured" or "missing", never show values
-7. **Support any key-value file format** - .env, .envrc, .properties, .ini, etc.
+7. **Only use files with '.env' in the name** - .env, .env.local, .env.production, etc.
 
 ## Common Scenarios
 
@@ -351,15 +348,8 @@ echo "All secrets configured" || echo "Some secrets missing"
 ### Scenario: Setting up direnv
 
 ```bash
-# For projects using direnv
-agent-secret inject PROJECTX_AWS_KEY:AWS_ACCESS_KEY_ID PROJECTX_AWS_SECRET:AWS_SECRET_ACCESS_KEY -f .envrc
-```
-
-### Scenario: Setting up Java/Scala properties
-
-```bash
-# For Spring Boot or other Java applications
-agent-secret inject PROJECTX_DB_URL:spring.datasource.url PROJECTX_DB_USER:spring.datasource.username -f application.properties
+# For projects using direnv (use .env file that direnv sources)
+agent-secret inject PROJECTX_AWS_KEY:AWS_ACCESS_KEY_ID PROJECTX_AWS_SECRET:AWS_SECRET_ACCESS_KEY -f .env
 ```
 
 ### Scenario: Missing secret handling
