@@ -3,7 +3,6 @@ package parser
 import (
 	"os"
 	"path/filepath"
-	"sort"
 	"testing"
 )
 
@@ -354,9 +353,4 @@ func containsHelper(s, substr string) bool {
 		}
 	}
 	return false
-}
-
-// Ensure sorted output for consistent test results
-func sortStrings(s []string) {
-	sort.Strings(s)
 }

@@ -17,7 +17,7 @@ func PromptSecret(promptText string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to set terminal to raw mode: %w", err)
 	}
-	defer term.Restore(fd, oldState)
+	defer func() { _ = term.Restore(fd, oldState) }()
 
 	var input strings.Builder
 	buf := make([]byte, 1)
@@ -67,7 +67,7 @@ func PromptConfirm(promptText string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to set terminal to raw mode: %w", err)
 	}
-	defer term.Restore(fd, oldState)
+	defer func() { _ = term.Restore(fd, oldState) }()
 
 	buf := make([]byte, 1)
 	n, err := os.Stdin.Read(buf)
