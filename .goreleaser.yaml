@@ -1,0 +1,74 @@
+# GoReleaser configuration for agent-secret
+# https://goreleaser.com
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+    binary: agent-secret
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: 'checksums.txt'
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - Merge pull request
+      - Merge branch
+
+brews:
+  - name: agent-secret
+    homepage: "https://github.com/onurkerem/agent-secret"
+    description: "A secure local secret vault for developers"
+    license: "MIT"
+    directory: Formula
+    repository:
+      owner: onurkerem
+      name: homebrew-agent-secret
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    test: |
+      system "#{bin}/agent-secret --version"
+    install: |
+      bin.install "agent-secret"
+
+release:
+  github:
+    owner: onurkerem
+    name: agent-secret
+  draft: false
+  prerelease: auto
+  mode: replace
