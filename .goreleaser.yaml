@@ -47,25 +47,6 @@ changelog:
       - Merge pull request
       - Merge branch
 
-brews:
-  - name: agent-secret
-    homepage: "https://github.com/onurkerem/agent-secret"
-    description: "A secure local secret vault for developers"
-    license: "MIT"
-    directory: Formula
-    repository:
-      owner: onurkerem
-      name: homebrew-agent-secret
-      branch: main
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
-    test: |
-      system "#{bin}/agent-secret --version"
-    install: |
-      bin.install "agent-secret"
-
 release:
   github:
     owner: onurkerem

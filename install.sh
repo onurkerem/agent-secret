@@ -45,22 +45,39 @@ info "Prerequisites met (curl, jq)"
 # --- Install agent-secret ---
 if command -v agent-secret >/dev/null 2>&1; then
   info "agent-secret already installed: $(agent-secret --version 2>/dev/null || echo 'unknown version')"
-elif command -v brew >/dev/null 2>&1; then
-  info "Installing agent-secret via Homebrew..."
-  brew tap onurkerem/agent-secret
-  brew install agent-secret
-  info "Installed: $(agent-secret --version 2>/dev/null || echo 'done')"
-elif command -v go >/dev/null 2>&1; then
-  info "Installing agent-secret via Go..."
-  cd "$(mktemp -d)"
-  git clone https://github.com/onurkerem/agent-secret.git
-  cd agent-secret/packages/cli
-  go build -o "$(go env GOPATH)/bin/agent-secret" .
-  cd -
-  rm -rf "$(pwd)/agent-secret"
-  info "Installed: $(agent-secret --version 2>/dev/null || echo 'done')"
 else
-  error "Neither Homebrew nor Go found. Install one: https://brew.sh or https://go.dev/dl/"
+  ARCH="$(uname -m)"
+  case "$ARCH" in
+    x86_64) ARCH="amd64" ;;
+    arm64)  ARCH="arm64" ;;
+    *)      error "Unsupported architecture: $ARCH" ;;
+  esac
+  case "$OS" in
+    Darwin) OS_NAME="darwin" ;;
+    Linux)  OS_NAME="linux" ;;
+  esac
+
+  LATEST_VERSION=$(curl -fsSL https://api.github.com/repos/onurkerem/agent-secret/releases/latest | jq -r '.tag_name // .name' | sed 's/^v//')
+  if [ -z "$LATEST_VERSION" ]; then
+    error "Could not determine latest version"
+  fi
+
+  DOWNLOAD_URL="https://github.com/onurkerem/agent-secret/releases/download/v${LATEST_VERSION}/agent-secret_${LATEST_VERSION}_${OS_NAME}_${ARCH}.tar.gz"
+  info "Downloading agent-secret v${LATEST_VERSION} for ${OS_NAME}/${ARCH}..."
+  TMPDIR=$(mktemp -d)
+  curl -fsSL "$DOWNLOAD_URL" -o "$TMPDIR/agent-secret.tar.gz"
+  tar -xzf "$TMPDIR/agent-secret.tar.gz" -C "$TMPDIR"
+  INSTALL_DIR="$HOME/.local/bin"
+  mkdir -p "$INSTALL_DIR"
+  mv "$TMPDIR/agent-secret" "$INSTALL_DIR/agent-secret"
+  chmod +x "$INSTALL_DIR/agent-secret"
+  rm -rf "$TMPDIR"
+  info "Installed agent-secret v${LATEST_VERSION} to $INSTALL_DIR/agent-secret"
+
+  if ! echo "$PATH" | grep -q "$INSTALL_DIR"; then
+    warn "Add $INSTALL_DIR to your PATH:"
+    echo "  export PATH=\"$INSTALL_DIR:\$PATH\""
+  fi
 fi
 
 # --- Download hook script ---

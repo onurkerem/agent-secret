@@ -27,18 +27,11 @@ After installation, install the AI agent skill:
 npx skills add https://github.com/onurkerem/agent-secret --skill agent-secret
 ```
 
-### Homebrew
-
-```bash
-brew tap onurkerem/agent-secret
-brew install agent-secret
-```
-
 ### From Source
 
 ```bash
 git clone https://github.com/onurkerem/agent-secret.git
-cd agent-secret
+cd agent-secret/packages/cli
 go build -o agent-secret .
 ```
 
