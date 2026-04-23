@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "add-project-website": {
+      "source": "onurkerem/skills",
+      "sourceType": "github",
+      "computedHash": "6226fb03ba734ec5f93307ef80cbf48d3d231b738dad57802ac212f3716f48c9"
+    }
+  }
+}

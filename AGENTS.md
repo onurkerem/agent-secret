@@ -8,18 +8,32 @@ Go CLI tool (`go 1.21`) that stores secrets in the OS keychain and injects them 
 
 **Dependencies**: `spf13/cobra` (CLI framework), `zalando/go-keyring` (OS keychain), `golang.org/x/term` (hidden terminal input).
 
+## Repository Structure
+
+```
+packages/
+  cli/                → Go CLI tool (main.go, cmd/, internal/)
+  website/            → Astro marketing website (src/, astro.config.ts)
+README.md             → User-facing documentation
+AGENTS.md             → This file — architecture, patterns, safety rules
+CLAUDE.md             → Points to @AGENTS.md
+LICENSE
+.goreleaser.yaml      → Release configuration (points to packages/cli/)
+```
+
 ## Architecture
 
 ```
-main.go              → calls cmd.Execute()
-cmd/                 → Cobra commands, each file self-registers via init()
-  root.go            → constants: serviceName="agent-secret", version
-  set.go / inject.go / check.go / list.go / delete.go
-internal/
-  keyring/           → thin wrapper over go-keyring (Set/Get/Delete/Exists/List)
-  parser/            → .env file parser and writer
-  prompt/            → raw terminal mode for hidden input
-skills/agent-secret/ → SKILL.md for AI agent integration
+packages/cli/
+  main.go              → calls cmd.Execute()
+  cmd/                 → Cobra commands, each file self-registers via init()
+    root.go            → constants: serviceName="agent-secret", version
+    set.go / inject.go / check.go / list.go / delete.go
+  internal/
+    keyring/           → thin wrapper over go-keyring (Set/Get/Delete/Exists/List)
+    parser/            → .env file parser and writer
+    prompt/            → raw terminal mode for hidden input
+  skills/agent-secret/ → SKILL.md for AI agent integration
 ```
 
 Commands use `os.Exit()` directly — errors are printed to stderr and the process terminates. There is no error propagation to `main()`.
@@ -77,9 +91,16 @@ Each command file defines a `var xxxCmd = &cobra.Command{...}` and registers it 
 4. Never expose secret values in output.
 5. Add flag bindings in `init()`, using package-level vars.
 
+### Website
+
+- **Website changes are part of every feature.** Any change to CLI flags, commands, or documented behavior must be reflected in the website.
+- Website lives in `packages/website/`. See `packages/website/AGENTS.md` for its own rules.
+- Dev: `cd packages/website && npm run dev`
+- Build: `cd packages/website && npm run build`
+
 ## Build & Release
 
-- No Makefile. Use `go build -o agent-secret .` for local builds.
+- No Makefile. Use `cd packages/cli && go build -o agent-secret .` for local builds.
 - GoReleaser handles cross-compilation (linux/darwin/windows, amd64/arm64) with `CGO_ENABLED=0`.
 - Version is hardcoded in `cmd/root.go`. GoReleaser ldflags attempt to inject `main.version`/`commit`/`date` but the `main` package doesn't declare these vars — this is a known gap.
 - Homebrew tap: `onurkerem/homebrew-agent-secret`.

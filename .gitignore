@@ -37,3 +37,8 @@ Thumbs.db
 .env
 .env.test
 .env.local
+
+# Website
+packages/website/node_modules/
+packages/website/dist/
+packages/website/.astro/
