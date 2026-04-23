@@ -85,23 +85,14 @@ if [ -f "$CLAUDE_SETTINGS" ]; then
   fi
 else
   mkdir -p .claude
-  cat > "$CLAUDE_SETTINGS" <<HOOKJSON
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Read|Bash|Grep|Glob",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOOK_SCRIPT_PATH"
-          }
-        ]
-      }
-    ]
-  }
-}
-HOOKJSON
+  jq -n --arg cmd "$HOOK_SCRIPT_PATH" '{
+    hooks: {
+      PreToolUse: [{
+        matcher: "Read|Bash|Grep|Glob",
+        hooks: [{ type: "command", command: $cmd }]
+      }]
+    }
+  }' > "$CLAUDE_SETTINGS"
   info "Created Claude Code hooks at $CLAUDE_SETTINGS"
 fi
 
@@ -120,23 +111,14 @@ if [ -f "$CODEX_HOOKS" ]; then
   fi
 else
   mkdir -p .codex
-  cat > "$CODEX_HOOKS" <<HOOKJSON
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOOK_SCRIPT_PATH"
-          }
-        ]
-      }
-    ]
-  }
-}
-HOOKJSON
+  jq -n --arg cmd "$HOOK_SCRIPT_PATH" '{
+    hooks: {
+      PreToolUse: [{
+        matcher: "Bash",
+        hooks: [{ type: "command", command: $cmd }]
+      }]
+    }
+  }' > "$CODEX_HOOKS"
   info "Created Codex hooks at $CODEX_HOOKS"
 fi
 
