@@ -43,35 +43,46 @@ fi
 info "Prerequisites met (curl, jq)"
 
 # --- Install agent-secret ---
-if command -v agent-secret >/dev/null 2>&1; then
-  info "agent-secret already installed: $(agent-secret --version 2>/dev/null || echo 'unknown version')"
-else
-  ARCH="$(uname -m)"
-  case "$ARCH" in
-    x86_64) ARCH="amd64" ;;
-    arm64)  ARCH="arm64" ;;
-    *)      error "Unsupported architecture: $ARCH" ;;
-  esac
-  case "$OS" in
-    Darwin) OS_NAME="darwin" ;;
-    Linux)  OS_NAME="linux" ;;
-  esac
+ARCH="$(uname -m)"
+case "$ARCH" in
+  x86_64) ARCH="amd64" ;;
+  arm64)  ARCH="arm64" ;;
+  *)      error "Unsupported architecture: $ARCH" ;;
+esac
+case "$OS" in
+  Darwin) OS_NAME="darwin" ;;
+  Linux)  OS_NAME="linux" ;;
+esac
 
-  LATEST_VERSION=$(curl -fsSL https://api.github.com/repos/onurkerem/agent-secret/releases/latest | jq -r '.tag_name // .name' | sed 's/^v//')
-  if [ -z "$LATEST_VERSION" ]; then
-    error "Could not determine latest version"
+LATEST_VERSION=$(curl -fsSL https://api.github.com/repos/onurkerem/agent-secret/releases/latest | jq -r '.tag_name // .name' | sed 's/^v//')
+if [ -z "$LATEST_VERSION" ]; then
+  error "Could not determine latest version"
+fi
+
+CURRENT_VERSION=""
+if command -v agent-secret >/dev/null 2>&1; then
+  CURRENT_VERSION=$(agent-secret --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+fi
+
+INSTALL_DIR="$HOME/.local/bin"
+
+if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
+  info "agent-secret v${CURRENT_VERSION} already up to date"
+else
+  if [ -n "$CURRENT_VERSION" ]; then
+    info "Upgrading agent-secret from v${CURRENT_VERSION} to v${LATEST_VERSION}..."
+  else
+    info "Downloading agent-secret v${LATEST_VERSION} for ${OS_NAME}/${ARCH}..."
   fi
 
   DOWNLOAD_URL="https://github.com/onurkerem/agent-secret/releases/download/v${LATEST_VERSION}/agent-secret_${LATEST_VERSION}_${OS_NAME}_${ARCH}.tar.gz"
-  info "Downloading agent-secret v${LATEST_VERSION} for ${OS_NAME}/${ARCH}..."
-  TMPDIR=$(mktemp -d)
-  curl -fsSL "$DOWNLOAD_URL" -o "$TMPDIR/agent-secret.tar.gz"
-  tar -xzf "$TMPDIR/agent-secret.tar.gz" -C "$TMPDIR"
-  INSTALL_DIR="$HOME/.local/bin"
+  TMPDIR_DOWNLOAD=$(mktemp -d)
+  curl -fsSL "$DOWNLOAD_URL" -o "$TMPDIR_DOWNLOAD/agent-secret.tar.gz"
+  tar -xzf "$TMPDIR_DOWNLOAD/agent-secret.tar.gz" -C "$TMPDIR_DOWNLOAD"
   mkdir -p "$INSTALL_DIR"
-  mv "$TMPDIR/agent-secret" "$INSTALL_DIR/agent-secret"
+  mv "$TMPDIR_DOWNLOAD/agent-secret" "$INSTALL_DIR/agent-secret"
   chmod +x "$INSTALL_DIR/agent-secret"
-  rm -rf "$TMPDIR"
+  rm -rf "$TMPDIR_DOWNLOAD"
   info "Installed agent-secret v${LATEST_VERSION} to $INSTALL_DIR/agent-secret"
 
   if ! echo "$PATH" | grep -q "$INSTALL_DIR"; then
