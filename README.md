@@ -13,6 +13,20 @@ A secure, developer-friendly CLI tool that acts as a **Local Secret Vault**. It 
 
 ## Installation
 
+### Quick Install (recommended)
+
+Installs the CLI, sets up hooks to protect your `.env` files from AI agents (Claude Code and Codex), and configures everything automatically:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/onurkerem/agent-secret/main/install.sh | bash
+```
+
+After installation, install the AI agent skill:
+
+```bash
+npx skills add https://github.com/onurkerem/agent-secret --skill agent-secret
+```
+
 ### Homebrew
 
 ```bash

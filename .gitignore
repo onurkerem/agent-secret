@@ -1,6 +1,7 @@
 docs/
 .claude/
 .agents/
+.codex/
 tasks/
 
 # Binaries

@@ -1,7 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 
-const installCommand = "brew tap onurkerem/agent-secret && brew install agent-secret";
+const installCommand = "curl -fsSL https://raw.githubusercontent.com/onurkerem/agent-secret/main/install.sh | bash";
 ---
 
 <Layout title="agent-secret — Secure Local Secret Vault">
@@ -30,7 +30,7 @@ const installCommand = "brew tap onurkerem/agent-secret && brew install agent-se
         </div>
         <div class="px-6 py-5">
           <code class="font-mono text-sm md:text-base leading-relaxed break-all block">
-            <span class="text-tertiary-fixed select-none">$ </span><span class="text-[#8b9cf7]">brew</span> <span class="text-on-surface-variant/70">tap</span> <span class="text-inverse-on-surface">onurkerem/agent-secret</span> <span class="text-[#8b9cf7]">&amp;&amp;</span> <span class="text-[#8b9cf7]">brew</span> <span class="text-on-surface-variant/70">install</span> <span class="text-inverse-on-surface">agent-secret</span>
+            <span class="text-tertiary-fixed select-none">$ </span><span class="text-[#8b9cf7]">curl</span> <span class="text-on-surface-variant/70">-fsSL</span> <span class="text-inverse-on-surface">https://raw.githubusercontent.com/onurkerem/agent-secret/main/install.sh</span> <span class="text-[#8b9cf7]">|</span> <span class="text-[#8b9cf7]">bash</span>
           </code>
         </div>
       </div>
@@ -246,6 +246,10 @@ const installCommand = "brew tap onurkerem/agent-secret && brew install agent-se
             <span class="material-symbols-outlined text-tertiary mt-1">check_circle</span>
             <p class="font-body text-on-surface-variant">Safe for automated workflows — check and inject commands never expose values</p>
           </div>
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-tertiary mt-1">shield</span>
+            <p class="font-body text-on-surface-variant">Hooks for Claude Code and Codex automatically block agents from reading .env files — they must use <code class="font-mono text-sm bg-surface-container px-1.5 py-0.5 rounded">agent-secret</code> instead</p>
+          </div>
         </div>
       </div>
       <div class="w-full lg:w-1/2">
@@ -265,7 +269,12 @@ const installCommand = "brew tap onurkerem/agent-secret && brew install agent-se
               <span class="text-tertiary-fixed">$</span> <span class="text-[#8b9cf7]">agent-secret</span> <span class="text-on-surface-variant/70">inject</span> <span class="text-inverse-on-surface">TRAVELER_GOOGLE_MAPS_KEY:GOOGLE_MAPS_KEY</span>
             </div>
             <div>
-              <span class="text-on-surface-variant opacity-70"># Agent verifies before running commands</span><br />
+              <span class="text-on-surface-variant opacity-70"># Agent tries to read .env — blocked by hook</span><br />
+              <span class="text-tertiary-fixed">$</span> <span class="text-[#8b9cf7]">cat</span> <span class="text-inverse-on-surface">.env</span><br />
+              <span class="text-red-400 opacity-80">&nbsp;&nbsp;✗ Blocked: Use agent-secret tool or ask for help</span>
+            </div>
+            <div>
+              <span class="text-on-surface-variant opacity-70"># Agent verifies the right way</span><br />
               <span class="text-tertiary-fixed">$</span> <span class="text-[#8b9cf7]">agent-secret</span> <span class="text-on-surface-variant/70">check</span> <span class="text-inverse-on-surface">DATABASE_URL</span> <span class="text-on-surface-variant/70">-q</span>
             </div>
           </div>
@@ -286,7 +295,7 @@ const installCommand = "brew tap onurkerem/agent-secret && brew install agent-se
 <script>
   document.getElementById("hero-copy-btn")?.addEventListener("click", async (e) => {
     const btn = e.currentTarget as HTMLElement;
-    const code = "brew tap onurkerem/agent-secret && brew install agent-secret";
+    const code = "curl -fsSL https://raw.githubusercontent.com/onurkerem/agent-secret/main/install.sh | bash";
     await navigator.clipboard.writeText(code);
     const icon = btn.querySelector(".material-symbols-outlined");
     if (icon) {
