@@ -17,6 +17,7 @@ HOOK_SCRIPT_URL="https://raw.githubusercontent.com/onurkerem/agent-secret/main/s
 CLAUDE_SETTINGS=".claude/settings.json"
 CODEX_HOOKS=".codex/hooks.json"
 CURSOR_HOOKS=".cursor/hooks.json"
+CURSOR_MATCHER="Shell|Read|ReadFile"
 
 echo ""
 echo -e "${BOLD}  agent-secret — Secure Local Secret Vault${RESET}"
@@ -168,10 +169,10 @@ fi
 # --- Set up Cursor hooks ---
 if [ -f "$CURSOR_HOOKS" ]; then
   EXISTING=$(jq '.hooks.preToolUse // [] | map(.matcher)' "$CURSOR_HOOKS" 2>/dev/null || echo '[]')
-  if echo "$EXISTING" | jq -e 'index("Shell|Read")' >/dev/null 2>&1; then
+  if echo "$EXISTING" | jq -e --arg matcher "$CURSOR_MATCHER" 'index($matcher)' >/dev/null 2>&1; then
     info "Cursor hooks already configured in $CURSOR_HOOKS"
   else
-    NEW_HOOK="{\"command\":\"$HOOK_SCRIPT_PATH\",\"matcher\":\"Shell|Read\"}"
+    NEW_HOOK="{\"command\":\"$HOOK_SCRIPT_PATH\",\"matcher\":\"$CURSOR_MATCHER\"}"
     jq --argjson hook "$NEW_HOOK" '
       .version = (.version // 1) |
       .hooks = (.hooks // {}) |
@@ -186,7 +187,7 @@ else
     hooks: {
       preToolUse: [{
         command: $cmd,
-        matcher: "Shell|Read"
+        matcher: "'"$CURSOR_MATCHER"'"
       }]
     }
   }' > "$CURSOR_HOOKS"

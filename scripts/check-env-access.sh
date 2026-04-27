@@ -3,21 +3,21 @@ set -euo pipefail
 
 INPUT=$(cat)
 
-TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // .toolName // empty')
 
 case "$TOOL_NAME" in
-  Read)
-    TARGET=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
+  Read|ReadFile)
+    TARGET=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // .tool_input.filePath // empty')
     ;;
   Bash|Shell)
-    TARGET=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+    TARGET=$(echo "$INPUT" | jq -r '.tool_input.command // .tool_input.cmd // empty')
     ;;
-  Grep)
-    TARGET=$(echo "$INPUT" | jq -r '.tool_input.path // empty')
+  Grep|rg)
+    TARGET=$(echo "$INPUT" | jq -r '.tool_input.path // .tool_input.file_path // empty')
     ;;
   Glob)
-    PATTERN=$(echo "$INPUT" | jq -r '.tool_input.pattern // empty')
-    PATH_VAL=$(echo "$INPUT" | jq -r '.tool_input.path // empty')
+    PATTERN=$(echo "$INPUT" | jq -r '.tool_input.pattern // .tool_input.glob_pattern // empty')
+    PATH_VAL=$(echo "$INPUT" | jq -r '.tool_input.path // .tool_input.target_directory // empty')
     TARGET="${PATTERN} ${PATH_VAL}"
     ;;
   *)
