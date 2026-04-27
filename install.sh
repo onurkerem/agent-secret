@@ -16,6 +16,7 @@ HOOK_SCRIPT_PATH="$HOOK_SCRIPT_DIR/check-env-access.sh"
 HOOK_SCRIPT_URL="https://raw.githubusercontent.com/onurkerem/agent-secret/main/scripts/check-env-access.sh"
 CLAUDE_SETTINGS=".claude/settings.json"
 CODEX_HOOKS=".codex/hooks.json"
+CURSOR_HOOKS=".cursor/hooks.json"
 
 echo ""
 echo -e "${BOLD}  agent-secret — Secure Local Secret Vault${RESET}"
@@ -162,6 +163,34 @@ if [ -f "$CODEX_CONFIG" ]; then
     sed -i'' 's/codex_hooks = false/codex_hooks = true/' "$CODEX_CONFIG"
     info "Enabled codex_hooks feature in $CODEX_CONFIG"
   fi
+fi
+
+# --- Set up Cursor hooks ---
+if [ -f "$CURSOR_HOOKS" ]; then
+  EXISTING=$(jq '.hooks.preToolUse // [] | map(.matcher)' "$CURSOR_HOOKS" 2>/dev/null || echo '[]')
+  if echo "$EXISTING" | jq -e 'index("Shell|Read")' >/dev/null 2>&1; then
+    info "Cursor hooks already configured in $CURSOR_HOOKS"
+  else
+    NEW_HOOK="{\"command\":\"$HOOK_SCRIPT_PATH\",\"matcher\":\"Shell|Read\"}"
+    jq --argjson hook "$NEW_HOOK" '
+      .version = (.version // 1) |
+      .hooks = (.hooks // {}) |
+      .hooks.preToolUse = (.hooks.preToolUse // []) + [$hook]
+    ' "$CURSOR_HOOKS" > "${CURSOR_HOOKS}.tmp" && mv "${CURSOR_HOOKS}.tmp" "$CURSOR_HOOKS"
+    info "Added Cursor hooks to $CURSOR_HOOKS"
+  fi
+else
+  mkdir -p .cursor
+  jq -n --arg cmd "$HOOK_SCRIPT_PATH" '{
+    version: 1,
+    hooks: {
+      preToolUse: [{
+        command: $cmd,
+        matcher: "Shell|Read"
+      }]
+    }
+  }' > "$CURSOR_HOOKS"
+  info "Created Cursor hooks at $CURSOR_HOOKS"
 fi
 
 # --- Summary ---

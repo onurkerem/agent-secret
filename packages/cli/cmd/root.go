@@ -9,7 +9,7 @@ import (
 
 const (
 	serviceName = "agent-secret"
-	version     = "1.3.2"
+	version     = "1.3.3"
 )
 
 var rootCmd = &cobra.Command{

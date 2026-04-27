@@ -9,7 +9,7 @@ case "$TOOL_NAME" in
   Read)
     TARGET=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
     ;;
-  Bash)
+  Bash|Shell)
     TARGET=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
     ;;
   Grep)
@@ -33,7 +33,7 @@ if echo "$TARGET" | grep -q '\.env'; then
   if echo "$TARGET" | grep -q 'example'; then
     exit 0
   fi
-  if [ "$TOOL_NAME" = "Bash" ] && echo "$TARGET" | grep -q 'agent-secret'; then
+  if { [ "$TOOL_NAME" = "Bash" ] || [ "$TOOL_NAME" = "Shell" ]; } && echo "$TARGET" | grep -q 'agent-secret'; then
     exit 0
   fi
   echo "You are trying to access secrets you are not allowed to. Use agent-secret tool or ask for help from user. Do not try to overcome this measure." >&2
