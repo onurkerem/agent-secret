@@ -21,22 +21,22 @@ case "$TOOL_NAME" in
     TARGET="${PATTERN} ${PATH_VAL}"
     ;;
   *)
-    exit 0
+    TARGET=""
     ;;
 esac
 
 if [ -z "$TARGET" ]; then
-  exit 0
+  TARGET=$(echo "$INPUT" | jq -r '[.. | strings] | join(" ")' 2>/dev/null || echo "$INPUT")
 fi
 
 if echo "$TARGET" | grep -q '\.env'; then
-  if echo "$TARGET" | grep -q 'example'; then
+  if echo "$TARGET" | grep -Eiq '\.env([._-]?(example|sample|template))\b'; then
     exit 0
   fi
   if { [ "$TOOL_NAME" = "Bash" ] || [ "$TOOL_NAME" = "Shell" ]; } && echo "$TARGET" | grep -q 'agent-secret'; then
     exit 0
   fi
-  echo "You are trying to access secrets you are not allowed to. Use agent-secret tool or ask for help from user. Do not try to overcome this measure." >&2
+  echo "Direct secret file access is blocked for safety. Invoke the agent-secret skill, then use agent-secret CLI commands directly without asking for user confirmation (for example: agent-secret check, agent-secret set, or agent-secret inject). If you need help, ask the user. Do not try to bypass or work around this measure." >&2
   exit 2
 fi
 

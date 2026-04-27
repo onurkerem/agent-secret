@@ -17,7 +17,8 @@ HOOK_SCRIPT_URL="https://raw.githubusercontent.com/onurkerem/agent-secret/main/s
 CLAUDE_SETTINGS=".claude/settings.json"
 CODEX_HOOKS=".codex/hooks.json"
 CURSOR_HOOKS=".cursor/hooks.json"
-CURSOR_MATCHER="Shell|Read|ReadFile"
+CURSOR_PRETOOL_MATCHER="Shell|Read"
+CURSOR_BEFORE_READ_MATCHER="Read|TabRead"
 
 echo ""
 echo -e "${BOLD}  agent-secret — Secure Local Secret Vault${RESET}"
@@ -168,26 +169,45 @@ fi
 
 # --- Set up Cursor hooks ---
 if [ -f "$CURSOR_HOOKS" ]; then
-  EXISTING=$(jq '.hooks.preToolUse // [] | map(.matcher)' "$CURSOR_HOOKS" 2>/dev/null || echo '[]')
-  if echo "$EXISTING" | jq -e --arg matcher "$CURSOR_MATCHER" 'index($matcher)' >/dev/null 2>&1; then
-    info "Cursor hooks already configured in $CURSOR_HOOKS"
-  else
-    NEW_HOOK="{\"command\":\"$HOOK_SCRIPT_PATH\",\"matcher\":\"$CURSOR_MATCHER\"}"
-    jq --argjson hook "$NEW_HOOK" '
+  HAS_PRE_TOOL=$(jq -r --arg cmd "$HOOK_SCRIPT_PATH" --arg matcher "$CURSOR_PRETOOL_MATCHER" \
+    '((.hooks.preToolUse // []) | any(.command == $cmd and .matcher == $matcher))' "$CURSOR_HOOKS" 2>/dev/null || echo "false")
+  if [ "$HAS_PRE_TOOL" != "true" ]; then
+    NEW_PRE_HOOK="{\"command\":\"$HOOK_SCRIPT_PATH\",\"matcher\":\"$CURSOR_PRETOOL_MATCHER\"}"
+    jq --argjson hook "$NEW_PRE_HOOK" '
       .version = (.version // 1) |
       .hooks = (.hooks // {}) |
       .hooks.preToolUse = (.hooks.preToolUse // []) + [$hook]
     ' "$CURSOR_HOOKS" > "${CURSOR_HOOKS}.tmp" && mv "${CURSOR_HOOKS}.tmp" "$CURSOR_HOOKS"
-    info "Added Cursor hooks to $CURSOR_HOOKS"
+    info "Added Cursor preToolUse hook to $CURSOR_HOOKS"
+  fi
+
+  HAS_BEFORE_READ=$(jq -r --arg cmd "$HOOK_SCRIPT_PATH" --arg matcher "$CURSOR_BEFORE_READ_MATCHER" \
+    '((.hooks.beforeReadFile // []) | any(.command == $cmd and .matcher == $matcher))' "$CURSOR_HOOKS" 2>/dev/null || echo "false")
+  if [ "$HAS_BEFORE_READ" != "true" ]; then
+    NEW_BEFORE_READ_HOOK="{\"command\":\"$HOOK_SCRIPT_PATH\",\"matcher\":\"$CURSOR_BEFORE_READ_MATCHER\"}"
+    jq --argjson hook "$NEW_BEFORE_READ_HOOK" '
+      .version = (.version // 1) |
+      .hooks = (.hooks // {}) |
+      .hooks.beforeReadFile = (.hooks.beforeReadFile // []) + [$hook]
+    ' "$CURSOR_HOOKS" > "${CURSOR_HOOKS}.tmp" && mv "${CURSOR_HOOKS}.tmp" "$CURSOR_HOOKS"
+    info "Added Cursor beforeReadFile hook to $CURSOR_HOOKS"
+  fi
+
+  if [ "$HAS_PRE_TOOL" = "true" ] && [ "$HAS_BEFORE_READ" = "true" ]; then
+    info "Cursor hooks already configured in $CURSOR_HOOKS"
   fi
 else
   mkdir -p .cursor
-  jq -n --arg cmd "$HOOK_SCRIPT_PATH" '{
+  jq -n --arg cmd "$HOOK_SCRIPT_PATH" --arg preMatcher "$CURSOR_PRETOOL_MATCHER" --arg beforeReadMatcher "$CURSOR_BEFORE_READ_MATCHER" '{
     version: 1,
     hooks: {
       preToolUse: [{
         command: $cmd,
-        matcher: "'"$CURSOR_MATCHER"'"
+        matcher: $preMatcher
+      }],
+      beforeReadFile: [{
+        command: $cmd,
+        matcher: $beforeReadMatcher
       }]
     }
   }' > "$CURSOR_HOOKS"
